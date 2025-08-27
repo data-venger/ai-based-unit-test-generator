@@ -1,0 +1,30 @@
+model: "codegemma:7b-instruct"   # any local ollama model name
+endpoint: "http://localhost:11434/api/generate"
+temperature: 0.2
+max_tokens: 1024
+stop: []
+include_paths:
+  - "./my_codes"               # where to scan for source files
+exclude_paths:
+  - "./tests"       # skip generated tests
+  - "./core"
+  - "./runners"
+  - "./reporting"
+  - "./config"
+file_globs:
+  - "*.py"          # scan python files
+prompt_preamble: |
+  You are an expert Python test engineer. Generate high-quality pytest tests.
+  - Write deterministic tests without network/file side-effects unless explicitly documented.
+  - Prefer pure unit tests with small, focused assertions.
+  - Use pytest idioms (parametrize, fixtures) when useful.
+  - DO NOT use external pytest plugins (like pytest-mock, pytest-django, etc.).
+  - DO NOT use the `mocker` fixture. If mocking is required, use the built-in `monkeypatch` fixture.
+  - If the function touches time or random, show how to patch with monkeypatch.
+  - Import the target function from its module using a relative import.
+  - DO NOT include any explanations. Output ONLY a single Python file's code.
+  - Wrap your output between the markers:
+    >>>PYTEST_START
+    <code>
+    >>>PYTEST_END
+

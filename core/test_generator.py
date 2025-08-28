@@ -1,9 +1,9 @@
 import os
 import textwrap
 from typing import Dict, List
-
+from core.import_utils import get_imports
+import platform
 from .ollama_client import OllamaClient
-
 
 START = ">>>PYTEST_START"
 END = ">>>PYTEST_END"
@@ -52,33 +52,55 @@ def _extract_code_between_markers(text: str) -> str:
     return "\n".join(cleaned_lines).strip()
 
 
-
-
-
-
 def generate_tests_for_functions(
-    functions: List[Dict],
-    client: OllamaClient,
-    preamble: str,
-    tests_dir: str = "tests",
+        functions: List[Dict],
+        client: OllamaClient,
+        preamble: str,
+        tests_dir: str = "tests",
 ) -> List[str]:
     os.makedirs(tests_dir, exist_ok=True)
     created_files = []
+
     for fn in functions:
-        prompt = _build_prompt(preamble, fn)
+        # 🔎 Step 1: scan imports in the source file
+        imports = get_imports(fn["module_path"])
+
+        # 🔎 Step 2: handle heavy/problematic imports
+        mock_snippets = []
+        if "airflow" in imports:
+            if platform.system() == "Windows":
+                print(f"Skipping {fn['module_path']} (Airflow not supported on Windows)")
+                continue
+            else:
+                mock_snippets.append(
+                    "import sys, types\n"
+                    "sys.modules['airflow'] = types.SimpleNamespace(DAG=lambda *a, **k: None)"
+                )
+
+        # merge preamble + mock snippets
+        full_preamble = preamble + "\n".join(mock_snippets)
+
+        # 🔎 Step 3: build prompt with adjusted preamble
+        prompt = _build_prompt(full_preamble, fn)
         raw = client.generate(prompt)
         code = _extract_code_between_markers(raw)
+
         if not code.startswith("import") and "pytest" not in code:
             # minimal guard: wrap in a pytest file if LLM forgot
-            code = f"import pytest\nfrom {fn['module_import']} import {fn['name']}\n\n" + code
+            code = (
+                f"import pytest\nfrom {fn['module_import']} import {fn['name']}\n\n" + code
+            )
+
         fname = f"test_{fn['name']}.py"
         out_path = os.path.join(tests_dir, fname)
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(code.rstrip() + "\n")
         created_files.append(out_path)
+
     # ensure tests is a package for relative imports to resolve
     init_file = os.path.join(tests_dir, "__init__.py")
     if not os.path.exists(init_file):
         with open(init_file, "w", encoding="utf-8") as f:
             f.write("# auto-generated\n")
     return created_files
+

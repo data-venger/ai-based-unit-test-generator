@@ -1,12 +1,14 @@
 === Pytest Summary ===
-       collected: 0
-          passed: 0
+       collected: 10
+          passed: 10
           failed: 0
           errors: 0
          skipped: 0
          xfailed: 0
          xpassed: 0
-duration_seconds: 1.0598652362823486
+duration_seconds: 0.5810098648071289
 
 === Coverage Summary ===
-reporting\coverage.xml not found
+   Lines Covered: 6 / 14
+       Line Rate: 42.86%
+     Branch Rate: 0.0%

@@ -1,3 +1,4 @@
+# Main methond to start the process
 import subprocess, sys
 
 def main():
